@@ -112,6 +112,7 @@ def transform_dates(df):
     for col in date_cols:
         add_datepart(df, col,)
 
+
 def get_inf_cols(df):
     '''
     Gets colnames with inf in them
