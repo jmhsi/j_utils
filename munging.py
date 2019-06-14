@@ -1,3 +1,4 @@
+# %load munging.py
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_string_dtype, is_numeric_dtype
@@ -7,13 +8,16 @@ from tqdm import tqdm
 # MUNGING ____________________________________________________________________
 def train_proc(df, normalize = True, verbose=True):
     '''
-    # get_noninf_val, replace_infs
-    # get_normalize_info, normalize_df (if needed)
-    # transform dates
-    # make_null_ind_cols
-    # get_fill_values, fill_values
-    # get_categories, encode_categories
-    # remove_zerovar_cols 
+    get_noninf_val, replace_infs with respective max or min value
+    get_normalize_info, normalize_df (if needed)
+    transform dates
+    make_null_ind_cols
+    get_fill_values, fill_values
+    get_categories, encode_categories
+    remove_zerovar_cols
+    
+    Returns list of:
+    df, all_train_colnames, max_dict, min_dict, new_null_colnames, fill_dict, cats_dict, (norm_dict)
     '''
 
     max_dict, min_dict = get_noninf_val(df)
@@ -28,7 +32,7 @@ def train_proc(df, normalize = True, verbose=True):
     cats_dict = get_categories(df)
     encode_categories(df, cats_dict)
     remove_zerovar_cols(df, verbose=verbose)
-    to_ret = [df, max_dict, min_dict, new_null_colnames, fill_dict, cats_dict]
+    to_ret = [df, df.columns, max_dict, min_dict, new_null_colnames, fill_dict, cats_dict]
     if normalize:
         to_ret.append(norm_dict)
     return to_ret
@@ -276,11 +280,15 @@ def normalize_df(df, norm_dict):
         std = stds[col]
         df[col] = (df[col]-mean)/std
         
-def compress_memory(df):
+def reduce_memory(df, verbose=True):
     '''
     Tries to cast float and int dtype cols to smallest possible for dataframe.
     For saving RAM/disk space.
     '''
+    if verbose:
+        print('trying to change columns to smaller dtypes when possible')
+        ori_mem = df.memory_usage(deep=True).sum()
+        print('original dataframe is {0} MB or {1} GB'.format(ori_mem/(1024**2), ori_mem/(1024**3)))
     dict_to_df = {}
     changed_type_cols = []
     reducible = df.select_dtypes(['int', 'float'])
@@ -313,167 +321,8 @@ def compress_memory(df):
             changed_type_cols.append(col)
     print('changed dtypes of {0} cols'.format(len(changed_type_cols)))
     reduced = pd.DataFrame(dict_to_df)
-    return changed_type_cols, pd.concat([irreducible, reduced], axis=1)        
-    
-# working
-
-
-    
-
-
-# old
-    
-# def get_medians_make_nullcols_fill_values(df, na_map = {}, catboost=False):
-    '''
-    This function makes new columns marking if a column is null or not, and
-    then fills the original column with median values. Does this inplace on
-    the passed dataframe, but still returns the dataframe as well. IF col 
-    dtype is not numeric, fills with mode instead. IF df[col].median() is 
-    nan, fills with 0
-    '''
-    if not na_map:
-        has_nulls = [col for col in df.columns if any(df[col].isnull())]
-        for col in tqdm(has_nulls):
-            if catboost:
-                # catboost wanted nans in string dtypes to be string...
-                if is_string_dtype(df[col]):
-                    df[col] = df[col].replace(np.nan, 'nan')
-                    na_map[col] = 'nan'
-
-            # normal stuff
-            if is_numeric_dtype(df[col]):
-                if np.isnan(df[col].median()):
-                    # handles case where the whole col is nan and you don't want to drop
-                    # for reasons (old data doesn't have feature, but new data does)
-                    df[col] = df[col].fillna(0)
-                    na_map[col] = 0
-                else:
-                    median = df[col].median()
-                    df[col] = df[col].fillna(median)
-                    na_map[col] = median
-            else:
-                print('{0} col is likely of non-int/float dtype, filling with mode instead'.format(col))
-                mode = df[col].mode() #is pandas series
-                if len(mode) == 0:
-                    mode = 0
-                else:
-                    mode = np.random.choice(mode) #if len(1), return mode, else ranodmly choose 1
-                df[col] = df[col].fillna(mode)
-                na_map[col] = mode
-        return df, na_map
-    else:
-        print('Was passed an na_map. Will fill accordingly (test or valid data?)')
-        for col, nafill in na_map.items():
-            df[col] = df[col].fillna(nafill)
-        return df
-
-# def prepare_nulls_valid_test(valid_test, train, 
-
-# def normalize_df(df, means_stds = {}):
-#     '''
-#     This function should be run after get_medians_make_nullcols_fill_values.
-#     Doesn't normalize the "_isnull" cols that are added by the aforemetioned
-#     function. Will print out a list of columns that it did not normalize but
-#     those cols should be checked if normalization is actually desired. 
-#     means_stds are for valid or test sets, normalized with same values as train
-#     '''
-#     if not means_stds:
-#         unsure_cols = []
-#         means = {}
-#         stds = {}
-#         for col in tqdm(df.columns):
-#             if '_isnull' not in col:
-#                 mean = df[col].mean()
-#                 means[col] = mean
-#                 std = df[col].std()
-#                 stds[col] = std
-#                 df[col] = (df[col]-mean)/std
-#             elif '_isnull' in col:
-#                 pass
-#             else:
-#                 if 'null' in col.lower() or 'is_null' in col.lower():
-#                     unsure_cols.append(col)
-#         print('These cols have word null or is_null in them. Double check. {0}'.format(
-#             unsure_cols))
-#         means_stds['means'] = means
-#         means_stds['stds'] = stds
-#         return df, means_stds
-#     else:
-#         print('Passed means_stds, normalizing cols according to means_stds (is valid or test set)')
-#         means = means_stds['means']
-#         stds = means_stds['stds']
-#         for col in means.keys():
-#             df[col] = (df[col] - means[col])/stds[col]
-#         return df
-    
-# def jproc_df(df, target=None, one_hot=False, copy=True, summary=True): #broken out into functions below, probably deprecated?
-    '''
-    Should be run on df after:
-    1. mg.transform_dates, (turns datetime columns into ML usable)
-    2. mg.remove_zerovar_cols, and consider drop cols is examined
-    3. fastai's train_cats (turns obj/str cols into categorical)
-    
-    This function will convert categoricals to their codes, adding +1 (so nan
-    is 0 instead of -1), and then will calculate means/stddev for
-    normalizing and median for filling nan values. Also creates new cols
-    demarkating whether value was originally nan via
-    mg.get_medians_make_nullcols_fill_values.
-    
-    copy could be set to False if you suspect memory issues
-    
-    returns x, y, na_dict, mapper
-    '''
-    
-    if target:
-        y = df[target]
-    else:
-        print('No specified target column, assuming target already separated')
-        y = []
-    if copy:
-        df = df.copy()
-    
-    # deal with cat cols, can either onehot or just turn into the categorical code
-    cat_cols = df.select_dtypes('category').columns
-    if one_hot:
-        print('Turning categoricals into one_hot representation')
-        dummied = pd.get_dummies(df[cat_cols])
-        df.drop(cat_cols, axis=1, inplace=True)
-    else:
-        print('Converting categoricals to their codes . . .')
-        for col in tqdm(cat_cols):
-            df[col] = df[col].cat.codes+1
-    
-    # all other (numeric) cols
-    # gather the means/stddevs/nas __________________
-    print('Calculating means/medians/std_devs . . .')
-    all_other_cols = [col for col in df.columns if col not in cat_cols]
-    mapper = {}
-    na_dict = {}
-    for col in tqdm(all_other_cols):
-        mapper[col] = {'mean': df[col].mean(),
-                       'std_dev': df[col].std()}
-        na_dict[col] = df[col].median()
-        
-    # make na cols, fill nas with median
-    print('Making _isnull indicator columns . . .')
-    has_nulls = [col for col in df.columns if any(df[col].isnull())]
-    for col in tqdm(has_nulls):
-        df[col+'_isnull'] = np.where(df[col].isnull(), 1, 0)
-        df[col] = df[col].fillna(na_dict[col])
-        
-    # normalize the df excluding cat_cols
-    print('Normalizing all non-categorical and non-_isnull columns . . .')
-    all_other_cols = [col for col in df.columns if col not in cat_cols]
-    for col in tqdm(all_other_cols):
-        if '_isnull' not in col:
-            df[col] = (df[col]-mapper[col]['mean'])/mapper[col]['std_dev']
-    
-    if one_hot:
-        df = pd.concat([df, dummied], axis=1)
-    
-    if summary:
-        print('Categorical cols: {0}\n\n'.format(list(cat_cols)))
-        print('Made _isnull cols for: {0}\n\n'.format(list(has_nulls)))
-        print('Normalized all other cols: {0}\n\n'.format([col for col in all_other_cols if '_isnull' not in col]))
-            
-    return df, y, na_dict, mapper
+    smaller = pd.concat([irreducible, reduced], axis=1)        
+    if verbose:
+        small_mem = smaller.memory_usage(deep=True).sum()
+        print('reduced dataframe is {0} MB or {1} GB'.format(small_mem/(1024**2), small_mem/(1024**3)))
+    return changed_type_cols, smaller
