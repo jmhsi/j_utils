@@ -5,8 +5,10 @@ from pandas.api.types import is_string_dtype, is_numeric_dtype
 import re
 from tqdm import tqdm
 
+
 # MUNGING ____________________________________________________________________
-def train_proc(df, normalize = True, verbose=True):
+
+def train_proc(df, normalize = True, verbose=True, isnull=True):
     '''
     get_noninf_val, replace_infs with respective max or min value
     get_normalize_info, normalize_df (if needed)
@@ -26,18 +28,21 @@ def train_proc(df, normalize = True, verbose=True):
         norm_dict = get_normalize_info(df)
         normalize_df(df, norm_dict)
     transform_dates(df)
-    df, new_null_colnames = make_null_ind_cols(df)
+    if isnull:
+        df, new_null_colnames = make_null_ind_cols(df)
     fill_dict = get_fill_values(df)
     fill_values(df, fill_dict)
     cats_dict = get_categories(df)
     encode_categories(df, cats_dict)
     remove_zerovar_cols(df, verbose=verbose)
-    to_ret = [df, df.columns, max_dict, min_dict, new_null_colnames, fill_dict, cats_dict]
+    to_ret = [df, df.columns, max_dict, min_dict, fill_dict, cats_dict]
+    if isnull:
+        to_ret.append(new_null_colnames)
     if normalize:
         to_ret.append(norm_dict)
     return to_ret
 
-def val_test_proc(df, all_train_colnames, max_dict, min_dict, fill_dict, cats_dict, norm_dict={}, verbose=True):
+def val_test_proc(df, all_train_colnames, max_dict, min_dict, fill_dict, cats_dict, norm_dict={}, verbose=True, isnull = True):
     '''
     # Make cols match
     # replace_infs
@@ -56,7 +61,8 @@ def val_test_proc(df, all_train_colnames, max_dict, min_dict, fill_dict, cats_di
     replace_infs(df, max_dict, min_dict)
     if norm_dict:
         normalize_df(df, norm_dict)
-    df, new_null_colnames = make_null_ind_cols(df)
+    if isnull:
+        df, new_null_colnames = make_null_ind_cols(df)
     fill_values(df, fill_dict)
     encode_categories(df, cats_dict)
     df = df[all_train_colnames]
