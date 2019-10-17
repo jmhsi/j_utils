@@ -7,6 +7,27 @@ from tqdm import tqdm
 
 
 # MUNGING ____________________________________________________________________
+def sort_train_eval(train, eva, id_col, sort_col, assert_shape=True):
+    '''
+    Helps to sort train df by sort_col which is only in eva df. train and
+    eva should both contain id_col (the unique identifier).
+    assert_shape checks that every id_col in train and eva are one-to-one
+    '''
+    if assert_shape:
+        train_id = set(train[id_col])
+        eva_id = set(eva[id_col])
+        assert not train.duplicated(id_col).any(), print('first df has id dupes')
+        assert not eva.duplicated(id_col).any(), print('second df has id dupes')
+        assert train_id == eva_id, print('some ids not present in both dfs')
+        assert train.shape[0] == eva.shape[0], print('ids not one to one')
+    sorted_id = eva.sort_values(sort_col)[id_col]
+    sort_map = dict(zip(sorted_id, range(len(sorted_id))))
+    train['sort_temp'] = train[id_col].map(sort_map)
+    train = train.sort_values('sort_temp')
+    train = train.drop('sort_temp', axis=1)
+    return train
+    
+
 def check_train_valid(train, valid, id_col, original=None):
     '''
     Function to check that two df's (train, valid) do not contain the same
