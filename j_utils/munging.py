@@ -7,6 +7,21 @@ from tqdm import tqdm
 
 
 # MUNGING ____________________________________________________________________
+def check_train_valid(train, valid, id_col, original=None):
+    '''
+    Function to check that two df's (train, valid) do not contain the same
+    data samples based on id_col. If passing original full set, it checks
+    that all samples are accounted for as well (if splitting train and valid
+    from original)
+    '''
+    train_id = set(train[id_col])
+    test_id = set(valid[id_col])
+    assert len(train_id.intersection(test_id)) == 0
+    if original:
+        assert train_id.union(test_id) == set(original[id_col])
+        print('all ids accounted for')
+    print('no overlapping id cols found')
+
 
 def train_proc(df, normalize = True, verbose=True, isnull=True):
     '''
