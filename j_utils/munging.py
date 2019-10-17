@@ -6,7 +6,25 @@ import re
 from tqdm import tqdm
 
 
-# MUNGING ____________________________________________________________________
+# Training Utils?
+def time_series_data_split(eva, date_col, q, n_yields):
+    '''
+    passing in sorted eva df and date_col, returns train and valid,
+    val_frac as valid data size. uses panda qcut behind the scenes
+    returns n_yields number of sets of indicies
+    '''
+#     step = int(val_frac * len(eva))
+    # get date in date_col at split, return everything
+    eva = eva.copy()
+    eva['temp'] = pd.qcut(eva['issue_d'], q=q, labels=range(q))
+    counter = 0
+    for i in range(q-1, q-1-n_yields, -1):
+        val_idx = eva.query('temp == @i').index
+        counter -= len(val_idx)
+        tr_idx = eva.index[:counter]
+        yield tr_idx, val_idx
+
+
 def sort_train_eval(train, eva, id_col, sort_col, assert_shape=True):
     '''
     Helps to sort train df by sort_col which is only in eva df. train and
@@ -44,7 +62,7 @@ def check_train_valid(train, valid, id_col, original=None):
         print('all ids accounted for')
     print('no overlapping id cols found')
 
-
+# MUNGING ____________________________________________________________________
 def train_proc(df, normalize = True, verbose=True, isnull=True):
     '''
     get_noninf_val, replace_infs with respective max or min value
