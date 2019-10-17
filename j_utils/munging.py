@@ -20,12 +20,13 @@ def sort_train_eval(train, eva, id_col, sort_col, assert_shape=True):
         assert not eva.duplicated(id_col).any(), print('second df has id dupes')
         assert train_id == eva_id, print('some ids not present in both dfs')
         assert train.shape[0] == eva.shape[0], print('ids not one to one')
-    sorted_id = eva.sort_values(sort_col)[id_col]
+    eva = eva.sort_values(sort_col)
+    sorted_id = eva[id_col]
     sort_map = dict(zip(sorted_id, range(len(sorted_id))))
     train['sort_temp'] = train[id_col].map(sort_map)
     train = train.sort_values('sort_temp')
     train = train.drop('sort_temp', axis=1)
-    return train
+    return train, eva
     
 
 def check_train_valid(train, valid, id_col, original=None):
