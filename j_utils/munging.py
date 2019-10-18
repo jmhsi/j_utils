@@ -92,7 +92,8 @@ def train_proc(df, normalize = True, verbose=True, isnull=True):
     remove_zerovar_cols(df, verbose=verbose)
     to_ret = [df, df.columns, max_dict, min_dict, fill_dict, cats_dict]
     if isnull:
-        to_ret.append(new_null_colnames)
+        print('made the following new null columns')
+        print(new_null_colnames)
     if normalize:
         to_ret.append(norm_dict)
     return to_ret
