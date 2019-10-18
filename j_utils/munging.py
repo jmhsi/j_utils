@@ -74,7 +74,8 @@ def train_proc(df, normalize = True, verbose=True, isnull=True):
     remove_zerovar_cols
     
     Returns list of:
-    df, all_train_colnames, max_dict, min_dict, new_null_colnames, fill_dict, cats_dict, (norm_dict)
+    df, all_train_colnames, max_dict, min_dict, fill_dict, cats_dict, (norm_dict).
+    Can optionally print new_null_colnames
     '''
 
     max_dict, min_dict = get_noninf_val(df)
