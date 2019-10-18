@@ -90,7 +90,7 @@ def train_proc(df, normalize = True, verbose=True, isnull=True):
     cats_dict = get_categories(df)
     encode_categories(df, cats_dict)
     remove_zerovar_cols(df, verbose=verbose)
-    to_ret = [df, df.columns, max_dict, min_dict, fill_dict, cats_dict]
+    to_ret = [df, df.columns.to_list(), max_dict, min_dict, fill_dict, cats_dict]
     if isnull:
         print('made the following new null columns')
         print(new_null_colnames)
